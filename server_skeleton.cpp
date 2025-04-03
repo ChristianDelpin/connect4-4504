@@ -117,6 +117,8 @@ bool checkTie(const char board[ROWS][COLS]) {
  */
 std::string readLine(int sockfd) {
     // TODO: Implement using recv() in a loop.
+
+    //might be able to copy/paste with minor modifications from client_skeleton.cpp (when it gets developed).
     return "";
 }
 
@@ -131,6 +133,9 @@ std::string readLine(int sockfd) {
  */
 bool writeLine(int sockfd, const std::string &line) {
     // TODO: Implement using send() in a loop.
+
+    //might be able to copy/paste with minor modifications from client_skeleton.cpp (when it gets developed).
+    
     return false;
 }
 
@@ -290,5 +295,7 @@ int main(int argc, char *argv[]) {
     //   • Call close() on the listening socket.
     // ============================================
 
+
+    close(); // same thing, no necessary check as if the code reaches this point, the connection should be closed.
     return 0;
 }

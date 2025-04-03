@@ -31,7 +31,18 @@
   */
 std::string readLine(int sockfd) {
     // TODO: Implement using recv() in a loop.
-    return "";
+    std::string byteString = "";
+    while(/*something*/)
+    {
+        byteString = "";
+        
+        //do something
+
+        if(byteString == "\n")
+            //stop and return string?
+    }
+
+    return ""; // am I allowed to replace with byteString?
 }
 
 /*
@@ -45,6 +56,10 @@ std::string readLine(int sockfd) {
  */
 bool writeLine(int sockfd, const std::string &line) {
     // TODO: Implement using send() in a loop.
+
+
+    if(send()) // need to implement send()?
+        return true;
     return false;
 }
 
@@ -161,5 +176,7 @@ int main(int argc, char *argv[]) {
     //   • Call close() on the client socket when the game is finished.
     // ============================================
 
+
+    close() // no check is necessary here because if the code reaches this section, the game is over and is notifying the server to terminate the session.
     return 0;
 }

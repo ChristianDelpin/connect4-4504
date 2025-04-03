@@ -1,0 +1,7 @@
+this file is necessary to turn in. it will contain 
+
+"
+a summary of the commands and arguments you used for each executable, 
+any issues and difficulties, and 
+the description of your testing of your program.
+"

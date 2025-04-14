@@ -25,7 +25,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
-
+#include <netinet/in.h>
 
 /*
     this is an error since this is a UNIX header. windows headers are:
@@ -148,13 +148,28 @@ int main(int argc, char *argv[]) {
     
     bool connected = false;
     
-    //  vvvv head preservation
-    for(list = result; list != null; list->next)
+    //  A pointer to `result` from `getaddrinfo()`. Used for head preservation.
+    for(addrinfo* result_ptr = result; result_ptr != null; list->next)
     {
-
+        if(bind(socketfd, result_ptr->ai_addr, result_ptr->ai_addrlen) == 0)
+            break; // bind is successful since bind() returns 0 on success. So we can break from the loop now.
     }
+    /*
+    Below copied from getaddrinfo() man page:
 
+        for (rp = result; rp != NULL; rp = rp->ai_next) {
+               sfd = socket(rp->ai_family, rp->ai_socktype,
+                       rp->ai_protocol);
+               if (sfd == -1)
+                   continue;
 
+               if (bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
+                   break; //success             
+
+                   close(sfd);
+        }
+
+    */
 
     // ============================================
     // TODO: Step 3 - Connect to the server:
@@ -166,6 +181,16 @@ int main(int argc, char *argv[]) {
     //   • Call connect() with the server's address.
     //   • If connect() fails, close the socket and exit.
     // ============================================
+
+    struct sockaddr_in whatshouldicallthis = { AF_INET, service, /*<address of site> (I think it might be something like result->ai_addr)*/ }
+
+    // connect(socketfd, address, address_length) returns 0 on success, -1 on failure.
+    if(connect() == -1)
+    {
+        std::cerr << "[ERROR] connect(): " << strerror(errno) << std::endl;
+        // TODO: Implement close socket here.
+        return errno; // Exits the program 
+    }
 
     std::cout << "Connected to " << hostname << " on port " << service << "\n"; //renamed from earlier.
     //std::cout << "Connected to " << hostname << " on port " << port << "\n";

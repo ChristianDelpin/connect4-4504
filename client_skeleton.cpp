@@ -18,7 +18,25 @@
 #include <cstring>
 #include <sstream>
 #include <string>
+
+
+
 // TODO: Include necessary headers for network calls (e.g., unistd.h, sys/types.h, sys/socket.h, netdb.h)
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
+
+/*
+    this is an error since this is a UNIX header. windows headers are:
+    - winsock2.h
+    - ws2tcpip.h
+    - ws2spi.h
+    prob means for simplicity sake, I need to test everything on a UNIX-based OS
+        (prob linprog which kms)
+*/
+
+
 
  /*
   * Function: readLine (TO BE IMPLEMENTED)
@@ -32,7 +50,7 @@
 std::string readLine(int sockfd) {
     // TODO: Implement using recv() in a loop.
     std::string byteString = "";
-    while(/*something*/)
+    while(recv(sockfd) > 1)
     {
         byteString = "";
         
@@ -78,8 +96,9 @@ int main(int argc, char *argv[]) {
         std::cerr << "Usage: " << argv[0] << " <hostname> <port>\n";
         return 1;
     }
-    const char *hostname = argv[1];
-    int port = std::stoi(argv[2]);
+    const char* hostname = argv[1];
+    const char* service = argv[2]; //swapped this to be a char* because getaddrinfo() requires a const char*
+    //int port = std::stoi(argv[2]);
 
     // ============================================
     // TODO: Step 1 - Create a socket:
@@ -90,6 +109,17 @@ int main(int argc, char *argv[]) {
     //         - Protocol: 0
     //   • Check that the socket descriptor is valid.
     // ============================================
+    
+
+
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0); //this is used later on in connect() and bind()
+    if(sockfd = -1)
+    {
+        std::cerr << "[ERROR] socket(): " << strerror(errno);
+        return errno; //close program on errno
+    }
+
+
 
     // ============================================
     // TODO: Step 2 - Resolve the hostname:
@@ -98,6 +128,33 @@ int main(int argc, char *argv[]) {
     //   • Verify that the result is valid.
     //   • If resolution fails, print an error and exit.
     // ============================================
+
+    struct addrinfo* result;
+    // hints not necessary since sockfd          vvvv 
+    int success = getaddrinfo(hostname, service, NULL, &result); //this will be used later on in conjunction with connect() and bind(). 
+    //above returns a list of IPs in this case to the resolved host and port that will allow us to pick one if >1 are returned.
+
+
+    if(success != 0) // 0 is success. Only handling failures to print & exit as required.
+    {
+        std::cerr << "[ERROR] getaddrinfo(): " << gai_strerror(success) << std::endl;
+        return success; // Exits the program with the error code given by success.
+    }
+
+    /* 
+    Since getaddrinfo() returns a Linked List of valid addresses, we can try and
+    connect to each one by navigating the list until we connect to one.
+    */
+    
+    bool connected = false;
+    
+    //  vvvv head preservation
+    for(list = result; list != null; list->next)
+    {
+
+    }
+
+
 
     // ============================================
     // TODO: Step 3 - Connect to the server:
@@ -110,7 +167,8 @@ int main(int argc, char *argv[]) {
     //   • If connect() fails, close the socket and exit.
     // ============================================
 
-    std::cout << "Connected to " << hostname << " on port " << port << "\n";
+    std::cout << "Connected to " << hostname << " on port " << service << "\n"; //renamed from earlier.
+    //std::cout << "Connected to " << hostname << " on port " << port << "\n";
 
     bool gameOver = false;
     while (!gameOver) {

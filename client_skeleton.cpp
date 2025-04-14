@@ -111,8 +111,8 @@ int main(int argc, char *argv[]) {
     // ============================================
     
 
-
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0); //this is used later on in connect() and bind()
+    
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0); //  Socket file descriptor. Returns -1 on Error & used later on in `connect()` and `bind()`
     if(sockfd = -1)
     {
         std::cerr << "[ERROR] socket(): " << strerror(errno);
@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
 
     struct addrinfo* result;
     // hints not necessary since sockfd          vvvv 
-    int success = getaddrinfo(hostname, service, NULL, &result); //this will be used later on in conjunction with connect() and bind(). 
+    int success = getaddrinfo(hostname, service, NULL, &result); // Success on `getaddrinfo()`. This will be used later on in conjunction with connect() and bind(). 
     //above returns a list of IPs in this case to the resolved host and port that will allow us to pick one if >1 are returned.
 
 
@@ -235,6 +235,6 @@ int main(int argc, char *argv[]) {
     // ============================================
 
 
-    close() // no check is necessary here because if the code reaches this section, the game is over and is notifying the server to terminate the session.
+    close(sockfd) // no check is necessary here because if the code reaches this section, the game is over and is notifying the server to terminate the session.
     return 0;
 }

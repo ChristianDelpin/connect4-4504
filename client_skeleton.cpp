@@ -26,14 +26,15 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <unistd.h>
 
 /*
-    this is an error since this is a UNIX header. windows headers are:
+    windows no likey since those are UNIX headers. windows headers are:
     - winsock2.h
     - ws2tcpip.h
     - ws2spi.h
     prob means for simplicity sake, I need to test everything on a UNIX-based OS
-        (prob linprog which kms)
+    cuz ain't no way am I making a multi-os thing.
 */
 
 
@@ -50,17 +51,26 @@
 std::string readLine(int sockfd) {
     // TODO: Implement using recv() in a loop.
     std::string byteString = "";
-    while(recv(sockfd) > 1)
+    
+    char buffer[1]; // Need to read from `recv()` one byte at a time, so no point in having a buffer > 1 byte in size.
+    while(true)
     {
-        byteString = "";
+
+                                             // 0 is passed as we have no use for flags.
+        if(recv(sockfd, buffer, sizeof(buffer), 0) <= 0 ) // if no bytes received
+        {
+            std::cerr << "[ERROR] recv(): "<< errno << " - " <<  strerror(errno) << std::endl;
+            break;
+        }
+        if(buffer[0] == '\n') // if '\n` received, break from loop.
+            break;
         
-        //do something
 
-        if(byteString == "\n")
-            //stop and return string?
+        //if(byteString == "\n") removed this line as it's not necessary in my implementation.
+        byteString += buffer[0]; // Add recieved data to byteString.
     }
-
-    return ""; // am I allowed to replace with byteString?
+    
+    return byteString;
 }
 
 /*
@@ -72,13 +82,20 @@ std::string readLine(int sockfd) {
  *   • If send() fails, return false.
  *   • Return true if successful.
  */
-bool writeLine(int sockfd, const std::string &line) {
+bool writeLine(int sockfd, const std::string& line) {
     // TODO: Implement using send() in a loop.
 
-
-    if(send()) // need to implement send()?
-        return true;
-    return false;
+    std::string newLine = line; //technically I don't need to do this since I can just do another send() after the loop with '\n', but that feels kinda dumb.
+    newLine += '\n';
+    for(char c : newLine)
+    {
+        if(send(sockfd, &c, 1, 0) <= 0) // If some error occurs
+        {
+            std::cerr << "[ERROR] send(): "<< errno << " - " <<  strerror(errno) << std::endl;
+            return false; //break not necessary since error detected.
+        }    
+    }
+    return true;
 }
 
 void displayBoard(const std::string &boardData) {
@@ -100,6 +117,13 @@ int main(int argc, char *argv[]) {
     const char* service = argv[2]; //swapped this to be a char* because getaddrinfo() requires a const char*
     //int port = std::stoi(argv[2]);
 
+    struct addrinfo* result, result_ptr;
+    struct sockaddr_in server = {}; // Init so there's no garbage data.
+    
+
+
+
+
     // ============================================
     // TODO: Step 1 - Create a socket:
     // Pseudo code:
@@ -113,12 +137,12 @@ int main(int argc, char *argv[]) {
 
     
     int sockfd = socket(AF_INET, SOCK_STREAM, 0); //  Socket file descriptor. Returns -1 on Error & used later on in `connect()` and `bind()`
-    if(sockfd = -1)
+    if(sockfd == -1)
     {
-        std::cerr << "[ERROR] socket(): " << strerror(errno);
+        std::cerr << "[ERROR] socket(): " << strerror(errno) << std::endl;
         return errno; //close program on errno
     }
-
+    std::cout << "[DEBUG] socket() successful." << std::endl;
 
 
     // ============================================
@@ -129,31 +153,48 @@ int main(int argc, char *argv[]) {
     //   • If resolution fails, print an error and exit.
     // ============================================
 
-    struct addrinfo* result;
     // hints not necessary since sockfd          vvvv 
-    int success = getaddrinfo(hostname, service, NULL, &result); // Success on `getaddrinfo()`. This will be used later on in conjunction with connect() and bind(). 
+    int success = getaddrinfo(hostname, service, NULL, &result); // Success on `getaddrinfo()`. This will be used later on in conjunction with connect()
     //above returns a list of IPs in this case to the resolved host and port that will allow us to pick one if >1 are returned.
 
+    /* currently think this code is redundant so I'm simply removing it to simplify it a bit.
+    for (result_ptr = result; result_ptr != NULL; result_ptr = result_ptr->ai_next) 
+    {
+        sockfd = socket(result_ptr->ai_family, result_ptr->ai_socktype, result_ptr->ai_protocol);
+        if (sockfd == -1)
+            continue;  // Socket creation failed, try next address
+    
+        if (connect(sockfd, result_ptr->ai_addr, result_ptr->ai_addrlen) != -1)
+            break;     // Success
+    
+        // Connect failed, close this socket and try next address
+        close(sockfd);
+    }
+    */
 
     if(success != 0) // 0 is success. Only handling failures to print & exit as required.
     {
         std::cerr << "[ERROR] getaddrinfo(): " << gai_strerror(success) << std::endl;
         return success; // Exits the program with the error code given by success.
     }
-
+    std::cout << "[DEBUG] getaddrinfo() successful." << std::endl;
+    
     /* 
     Since getaddrinfo() returns a Linked List of valid addresses, we can try and
     connect to each one by navigating the list until we connect to one.
     */
     
+
+    /* below stuff is wrong. not deleted for sake of just-in-case-I'm-stupid. bind() is not used by the client, but by the server.
     bool connected = false;
     
     //  A pointer to `result` from `getaddrinfo()`. Used for head preservation.
     for(addrinfo* result_ptr = result; result_ptr != null; list->next)
     {
         if(bind(socketfd, result_ptr->ai_addr, result_ptr->ai_addrlen) == 0)
-            break; // bind is successful since bind() returns 0 on success. So we can break from the loop now.
+            break; // bind is successful since bind() returns 0 on success, so we can break from the loop now.
     }
+    */
     /*
     Below copied from getaddrinfo() man page:
 
@@ -182,15 +223,21 @@ int main(int argc, char *argv[]) {
     //   • If connect() fails, close the socket and exit.
     // ============================================
 
-    struct sockaddr_in whatshouldicallthis = { AF_INET, service, /*<address of site> (I think it might be something like result->ai_addr)*/ }
 
+    server.sin_family = AF_INET;
+    server.sin_port = htons(atoi(service));
+
+    struct sockaddr_in* resolved = (struct sockaddr_in*)(result->ai_addr);
+    server.sin_addr = resolved->sin_addr;
+    
     // connect(socketfd, address, address_length) returns 0 on success, -1 on failure.
-    if(connect() == -1)
+    if(connect(sockfd, (struct sockaddr*)&server, sizeof(server)) == -1)
     {
         std::cerr << "[ERROR] connect(): " << strerror(errno) << std::endl;
         // TODO: Implement close socket here.
         return errno; // Exits the program 
     }
+    std::cout << "[DEBUG] connect() successful." << std::endl;
 
     std::cout << "Connected to " << hostname << " on port " << service << "\n"; //renamed from earlier.
     //std::cout << "Connected to " << hostname << " on port " << port << "\n";
@@ -200,7 +247,7 @@ int main(int argc, char *argv[]) {
         // ============================================
         // The server should first send the header "BOARD".
         // ============================================
-        std::string header = readLine(/* client socket descriptor */);
+        std::string header = readLine(sockfd);
         if (header != "BOARD") {
             std::cerr << "Protocol error: expected BOARD, got '" << header << "'\n";
             break;
@@ -211,14 +258,14 @@ int main(int argc, char *argv[]) {
         // ============================================
         std::string boardData;
         for (int i = 0; i < 6; i++) {
-            std::string line = readLine(/* client socket descriptor */);
+            std::string line = readLine(sockfd);
             boardData += line + "\n";
         }
 
         // ============================================
         // Read the turn message from the server (e.g., "TURN CLIENT" or "GAMEOVER ...").
         // ============================================
-        std::string turnMsg = readLine(/* client socket descriptor */);
+        std::string turnMsg = readLine(sockfd);
 
         displayBoard(boardData);
 
@@ -235,7 +282,7 @@ int main(int argc, char *argv[]) {
                 }
                 std::ostringstream oss;
                 oss << "MOVE " << col;
-                if (!writeLine(/* client socket descriptor */, oss.str())) {
+                if (!writeLine(sockfd, oss.str())) {
                     std::cerr << "Failed to send move.\n";
                     break;
                 }
@@ -260,6 +307,6 @@ int main(int argc, char *argv[]) {
     // ============================================
 
 
-    close(sockfd) // no check is necessary here because if the code reaches this section, the game is over and is notifying the server to terminate the session.
+    close(sockfd); // no check is necessary here because if the code reaches this section, the game is over and is notifying the server to terminate the session.
     return 0;
 }

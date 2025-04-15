@@ -25,6 +25,12 @@
 #include <sstream>
 #include <string>
 // TODO: Include necessary headers for socket programming (e.g., unistd.h, sys/types.h, sys/socket.h, netinet/in.h)
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <arpa/inet.h> // for inet_ntoa(). Not necessary, but I want it.
 
 const int ROWS = 6;
 const int COLS = 7;
@@ -117,9 +123,26 @@ bool checkTie(const char board[ROWS][COLS]) {
  */
 std::string readLine(int sockfd) {
     // TODO: Implement using recv() in a loop.
+    std::string byteString = "";
+    
+    char buffer[1]; // Need to read from `recv()` one byte at a time, so no point in having a buffer > 1 byte in size.
+    while(true)
+    {
+                                             // 0 is passed as we have no use for flags.
+        if(recv(sockfd, buffer, sizeof(buffer), 0) <= 0 ) // if no bytes received
+        {
+            std::cerr << "[ERROR] recv(): "<< errno << " - " <<  strerror(errno) << std::endl;
+            break;
+        }
+        if(buffer[0] == '\n') // if '\n` received, break from loop.
+            break;
+        
 
-    //might be able to copy/paste with minor modifications from client_skeleton.cpp (when it gets developed).
-    return "";
+        //if(byteString == "\n") removed this line as it's not necessary in my implementation.
+        byteString += buffer[0]; // Add recieved data to byteString.
+    }
+    
+    return byteString;
 }
 
 /*
@@ -133,10 +156,17 @@ std::string readLine(int sockfd) {
  */
 bool writeLine(int sockfd, const std::string &line) {
     // TODO: Implement using send() in a loop.
-
-    //might be able to copy/paste with minor modifications from client_skeleton.cpp (when it gets developed).
-    
-    return false;
+    std::string newLine = line; //technically I don't need to do this since I can just do another send() after the loop with '\n', but that feels kinda dumb.
+    newLine += '\n';
+    for(char c : newLine)
+    {
+        if(send(sockfd, &c, 1, 0) <= 0) // If some error occurs
+        {
+            std::cerr << "[ERROR] send(): "<< errno << " - " <<  strerror(errno) << std::endl;
+            return false; //break not necessary since error detected.
+        }    
+    }
+    return true;
 }
 
 /*
@@ -153,8 +183,12 @@ bool sendBoardAndTurn(int sockfd, const char board[ROWS][COLS], const std::strin
     return writeLine(sockfd, msg);
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
+
+
+int main(int argc, char *argv[]) 
+{
+    if (argc != 2) 
+    {
         std::cerr << "Usage: " << argv[0] << " <port>\n";
         return 1;
     }
@@ -170,7 +204,13 @@ int main(int argc, char *argv[]) {
     //   • Check if the returned socket descriptor is valid (not negative).
     //   • If it fails, display an error and exit.
     // ============================================
-
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if(sockfd == -1)
+    { // TODO: Fix. Oddly enough, the output is 'success' ?????
+        std::cerr << "[ERROR] socket(): " << strerror(errno) << std::endl;
+        return errno; //close program on errno
+    }
+    std::cout << "[DEBUG] socket() successful." << std::endl;
     // ============================================
     // TODO: Step 2 - Bind the socket to the specified port:
     // Pseudo code:
@@ -181,7 +221,17 @@ int main(int argc, char *argv[]) {
     //   • Call bind() with your socket, the address structure, and its size.
     //   • Verify that bind() succeeds; otherwise, print an error and exit.
     // ============================================
+    struct sockaddr_in client = {};
+    client.sin_family = AF_INET;
+    client.sin_addr.s_addr = INADDR_ANY;
+    client.sin_port = htons(port);
 
+    if(bind(sockfd,(struct sockaddr*)&client, sizeof(client)) != 0)
+    { // If bind() errors
+        std::cerr << "[ERROR] bind(): " << strerror(errno) << std::endl;
+        return errno;
+    }
+    std::cout << "[DEBUG] bind() successful." << std::endl;
     // ============================================
     // TODO: Step 3 - Put the socket into listening mode:
     // Pseudo code:
@@ -189,6 +239,16 @@ int main(int argc, char *argv[]) {
     //   • If listen() fails, print an error and exit.
     //   • Optionally, print a message that the server is waiting for connections.
     // ============================================
+    const int BACKLOG = 0; // temporarily 0 just for ease.
+    
+    if(listen(sockfd, BACKLOG) != 0)
+    {
+        std::cerr << "[ERROR] listen(): " << strerror(errno) << std::endl;
+        return errno;
+    }
+
+    std::cout << "Listening and awaiting a connection...";
+
 
     while (true) {
         // ============================================
@@ -199,6 +259,18 @@ int main(int argc, char *argv[]) {
         //   • Check for errors; if accept() fails, print an error and continue to the next iteration.
         //   • Optionally, print a message that a client has connected.
         // ============================================
+
+        socklen_t client_length = sizeof(client);
+        int accept_status = accept(sockfd, (struct sockaddr*)&client, &client_length);
+        if( accept_status == -1)
+        { // Error
+            std::cerr << "[ERROR] accept(): " << strerror(errno) << std::endl; // Print error.
+            continue; // Continue to next iter.
+        }
+        std::cout << "[DEBUG] accept() successful." << std::endl;
+
+        //If we get here, that means we accepted the connection.
+        std::cout << "Connection accepted from: [" << inet_ntoa(client.sin_addr) << ":"<< ntohs(client.sin_port) << "]!" << std::endl;
 
         // Initialize game state
         char board[ROWS][COLS];
@@ -216,7 +288,7 @@ int main(int argc, char *argv[]) {
         while (!gameOver) {
             if (clientTurn) {
                 // Wait for the client to send a move command.
-                std::string clientMsg = readLine(/* client socket descriptor */);
+                std::string clientMsg = readLine(sockfd);
                 if (clientMsg.empty()) {
                     std::cerr << "Client disconnected or error occurred.\n";
                     break;
@@ -226,23 +298,23 @@ int main(int argc, char *argv[]) {
                 int col;
                 iss >> command >> col;
                 if (command != "MOVE" || col < 1 || col > 7) {
-                    writeLine(/* client socket descriptor */, "INVALID_MOVE");
-                    sendBoardAndTurn(/* client socket descriptor */, board, "TURN CLIENT");
+                    writeLine(sockfd, "INVALID_MOVE");
+                    sendBoardAndTurn(sockfd, board, "TURN CLIENT");
                     continue;
                 }
                 int dropRow = dropPiece(board, col - 1, 'C');
                 if (dropRow == -1) {
-                    writeLine(/* client socket descriptor */, "INVALID_MOVE");
-                    sendBoardAndTurn(/* client socket descriptor */, board, "TURN CLIENT");
+                    writeLine(sockfd, "INVALID_MOVE");
+                    sendBoardAndTurn(sockfd, board, "TURN CLIENT");
                     continue;
                 }
                 std::cout << "Client dropped a piece in column " << col << ".\n";
                 if (checkWin(board, dropRow, col - 1, 'C')) {
-                    sendBoardAndTurn(/* client socket descriptor */, board, "GAMEOVER CLIENT_WIN");
+                    sendBoardAndTurn(sockfd, board, "GAMEOVER CLIENT_WIN");
                     std::cout << "Client wins!\n";
                     gameOver = true;
                 } else if (checkTie(board)) {
-                    sendBoardAndTurn(/* client socket descriptor */, board, "GAMEOVER TIE");
+                    sendBoardAndTurn(sockfd, board, "GAMEOVER TIE");
                     std::cout << "Tie!\n";
                     gameOver = true;
                 } else {
@@ -266,16 +338,16 @@ int main(int argc, char *argv[]) {
                 }
                 std::cout << "Server dropped a piece in column " << col << ".\n";
                 if (checkWin(board, dropRow, col - 1, 'S')) {
-                    sendBoardAndTurn(/* client socket descriptor */, board, "GAMEOVER SERVER_WIN");
+                    sendBoardAndTurn(sockfd, board, "GAMEOVER SERVER_WIN");
                     std::cout << "Server wins!\n";
                     gameOver = true;
                 } else if (checkTie(board)) {
-                    sendBoardAndTurn(/* client socket descriptor */, board, "GAMEOVER TIE");
+                    sendBoardAndTurn(sockfd, board, "GAMEOVER TIE");
                     std::cout << "Tie!\n";
                     gameOver = true;
                 } else {
                     clientTurn = true;
-                    sendBoardAndTurn(/* client socket descriptor */, board, "TURN CLIENT");
+                    sendBoardAndTurn(sockfd, board, "TURN CLIENT");
                 }
             }
         } // end game loop

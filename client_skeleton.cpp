@@ -230,8 +230,12 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in* resolved = (struct sockaddr_in*)(result->ai_addr);
     server.sin_addr = resolved->sin_addr;
     
+    std::cout << "[DEBUG] Running connect()..." << std::endl;
+
+    int connect_success = connect(sockfd, (struct sockaddr*)&server, sizeof(server));
     // connect(socketfd, address, address_length) returns 0 on success, -1 on failure.
-    if(connect(sockfd, (struct sockaddr*)&server, sizeof(server)) == -1)
+    std::cout << "[DEBUG] connect_success = " << connect_success << std::endl;
+    if( connect_success == -1)
     {
         std::cerr << "[ERROR] connect(): " << strerror(errno) << std::endl;
         // TODO: Implement close socket here.

@@ -129,7 +129,7 @@ std::string readLine(int sockfd) {
     while(true)
     {
                                              // 0 is passed as we have no use for flags.
-        if(recv(sockfd, buffer, sizeof(buffer), 0) <= 0 ) // if no bytes received
+        if(recv(sockfd, buffer, sizeof(buffer), 0) != 0 ) // if no bytes received
         {
             std::cerr << "[ERROR] recv(): "<< errno << " - " <<  strerror(errno) << std::endl;
             break;
@@ -239,18 +239,47 @@ int main(int argc, char *argv[])
     //   • If listen() fails, print an error and exit.
     //   • Optionally, print a message that the server is waiting for connections.
     // ============================================
-    const int BACKLOG = 0; // temporarily 0 just for ease.
-    
-    if(listen(sockfd, BACKLOG) != 0)
+
+
+
+    struct sockaddr_in server_info;
+    socklen_t server_info_len = sizeof(server_info);
+
+    // Get information about the socket
+    if (getsockname(sockfd, (struct sockaddr*)&server_info, &server_info_len) == 0) 
+    {
+        char ip_str[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &(server_info.sin_addr), ip_str, INET_ADDRSTRLEN);
+        int port = ntohs(server_info.sin_port);
+        
+        std::cout << "[INFO] Server listening on IP: " << ip_str << ", Port: " << port << std::endl;
+    } 
+    else 
+        std::cerr << "[ERROR] getsockname(): " << strerror(errno) << std::endl;
+
+
+
+
+
+
+
+    const int BACKLOG = 1; 
+    std::cout << "[DEBUG] Running listen..." << std::endl;
+
+    int listen_status = listen(sockfd, BACKLOG);
+
+    std::cout << "[DEBUG] listen_status = " << listen_status << std::endl;
+    if(listen_status != 0)
     {
         std::cerr << "[ERROR] listen(): " << strerror(errno) << std::endl;
         return errno;
     }
-
-    std::cout << "Listening and awaiting a connection...";
+    std::cout << "[DEBUG] listen() successful." << std::endl;
+    std::cout << "Listening and awaiting a connection..." << std::endl;
 
 
     while (true) {
+        std::cout << "[DEBUG] In loop." << std::endl;
         // ============================================
         // TODO: Step 4 - Accept a connection:
         // Pseudo code:
@@ -261,7 +290,11 @@ int main(int argc, char *argv[])
         // ============================================
 
         socklen_t client_length = sizeof(client);
+        
+        std::cout << "[DEBUG] Awaiting accept()..." << std::endl;
         int accept_status = accept(sockfd, (struct sockaddr*)&client, &client_length);
+
+        std::cout << "[DEBUG] accept_status = " << accept_status << std::endl;
         if( accept_status == -1)
         { // Error
             std::cerr << "[ERROR] accept(): " << strerror(errno) << std::endl; // Print error.
@@ -358,7 +391,7 @@ int main(int argc, char *argv[])
         //   • Call close() on the socket used for the current client.
         // ============================================
 
-        std::cout << "Game ended. Waiting for next client...\n";
+        std::cout << "Game ended. Waiting for next client...\n----------------------------------------------------------------" << std::endl;
     } // end while true
 
     // ============================================
@@ -368,6 +401,6 @@ int main(int argc, char *argv[])
     // ============================================
 
 
-    close(); // same thing, no necessary check as if the code reaches this point, the connection should be closed.
+    close(sockfd); // same thing, no necessary check as if the code reaches this point, the connection should be closed.
     return 0;
 }

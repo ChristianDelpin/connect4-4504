@@ -52,7 +52,7 @@ std::string readLine(int sockfd) {
         }
         if(buffer[0] == '\n') // if '\n` received, break from loop.
             break;
-        
+        std::cout << "[DEBUG] Contents buffer:\n----------\n" << buffer[0] << "\n----------" << std::endl;
         //if(byteString == "\n") removed this line as it's not necessary in my implementation.
         byteString += buffer[0]; // Add recieved data to byteString.
     }

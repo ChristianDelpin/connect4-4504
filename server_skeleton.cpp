@@ -221,12 +221,12 @@ int main(int argc, char *argv[])
     //   • Call bind() with your socket, the address structure, and its size.
     //   • Verify that bind() succeeds; otherwise, print an error and exit.
     // ============================================
-    struct sockaddr_in client = {};
-    client.sin_family = AF_INET;
-    client.sin_addr.s_addr = INADDR_ANY;
-    client.sin_port = htons(port);
+    struct sockaddr_in server_addr = {};
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(port);
 
-    if(bind(sockfd,(struct sockaddr*)&client, sizeof(client)) != 0)
+    if(bind(sockfd,(struct sockaddr*)&server_addr, sizeof(server_addr)) != 0)
     { // If bind() errors
         std::cerr << "[ERROR] bind(): " << strerror(errno) << std::endl;
         return errno;
@@ -242,15 +242,15 @@ int main(int argc, char *argv[])
 
 
 
-    struct sockaddr_in server_info;
-    socklen_t server_info_len = sizeof(server_info);
+    struct sockaddr_in client_addr;
+    socklen_t client_length = sizeof(client_addr);
 
     // Get information about the socket
-    if (getsockname(sockfd, (struct sockaddr*)&server_info, &server_info_len) == 0) 
+    if (getsockname(sockfd, (struct sockaddr*)&client_addr, &client_length) == 0) 
     {
         char ip_str[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &(server_info.sin_addr), ip_str, INET_ADDRSTRLEN);
-        int port = ntohs(server_info.sin_port);
+        inet_ntop(AF_INET, &(client_addr.sin_addr), ip_str, INET_ADDRSTRLEN);
+        int port = ntohs(client_addr.sin_port);
         
         std::cout << "[INFO] Server listening on IP: " << ip_str << ", Port: " << port << std::endl;
     } 
@@ -273,7 +273,7 @@ int main(int argc, char *argv[])
 
 
     while (true) {
-        std::cout << "[DEBUG] In loop." << std::endl;
+        std::cout << "[DEBUG] Start of loop." << std::endl;
         // ============================================
         // TODO: Step 4 - Accept a connection:
         // Pseudo code:
@@ -283,12 +283,13 @@ int main(int argc, char *argv[])
         //   • Optionally, print a message that a client has connected.
         // ============================================
 
-        socklen_t client_length = sizeof(client);
+        socklen_t client_length = sizeof(client_addr);
         
         std::cout << "[DEBUG] Awaiting accept()..." << std::endl;
-        int accept_status = accept(sockfd, (struct sockaddr*)&client, &client_length);
+        int accept_status = accept(sockfd, (struct sockaddr*)&client_addr, &client_length);
 
         std::cout << "[DEBUG] accept_status = " << accept_status << std::endl;
+        //std::cout << "[DEBUG] VALUES\n----------\nsockfd = " << sockfd << "" 
         if( accept_status == -1)
         { // Error
             std::cerr << "[ERROR] accept(): " << strerror(errno) << std::endl; // Print error.
@@ -297,7 +298,7 @@ int main(int argc, char *argv[])
         std::cout << "[DEBUG] accept() successful." << std::endl;
 
         //If we get here, that means we accepted the connection.
-        std::cout << "Connection accepted from: [" << inet_ntoa(client.sin_addr) << ":"<< ntohs(client.sin_port) << "]!" << std::endl;
+        std::cout << "Connection accepted from: [" << inet_ntoa(server_addr.sin_addr) << ":"<< ntohs(server_addr.sin_port) << "]!" << std::endl;
 
         // Initialize game state
         char board[ROWS][COLS];

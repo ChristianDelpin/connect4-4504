@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
     // ============================================
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if(sockfd == -1)
-    { // TODO: Fix. Oddly enough, the output is 'success' ?????
+    {
         std::cerr << "[ERROR] socket(): " << strerror(errno) << std::endl;
         return errno; //close program on errno
     }
@@ -256,12 +256,6 @@ int main(int argc, char *argv[])
     } 
     else 
         std::cerr << "[ERROR] getsockname(): " << strerror(errno) << std::endl;
-
-
-
-
-
-
 
     const int BACKLOG = 1; 
     std::cout << "[DEBUG] Running listen..." << std::endl;
@@ -390,7 +384,7 @@ int main(int argc, char *argv[])
         // Pseudo code:
         //   • Call close() on the socket used for the current client.
         // ============================================
-
+        close(sockfd);
         std::cout << "Game ended. Waiting for next client...\n----------------------------------------------------------------" << std::endl;
     } // end while true
 

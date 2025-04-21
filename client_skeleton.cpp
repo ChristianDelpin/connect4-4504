@@ -28,17 +28,6 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
-/*
-    windows no likey since those are UNIX headers. windows headers are:
-    - winsock2.h
-    - ws2tcpip.h
-    - ws2spi.h
-    prob means for simplicity sake, I need to test everything on a UNIX-based OS
-    cuz ain't no way am I making a multi-os thing.
-*/
-
-
-
  /*
   * Function: readLine (TO BE IMPLEMENTED)
   *
@@ -55,7 +44,6 @@ std::string readLine(int sockfd) {
     char buffer[1]; // Need to read from `recv()` one byte at a time, so no point in having a buffer > 1 byte in size.
     while(true)
     {
-
                                              // 0 is passed as we have no use for flags.
         if(recv(sockfd, buffer, sizeof(buffer), 0) <= 0 ) // if no bytes received
         {
@@ -65,7 +53,6 @@ std::string readLine(int sockfd) {
         if(buffer[0] == '\n') // if '\n` received, break from loop.
             break;
         
-
         //if(byteString == "\n") removed this line as it's not necessary in my implementation.
         byteString += buffer[0]; // Add recieved data to byteString.
     }
@@ -154,63 +141,15 @@ int main(int argc, char *argv[]) {
     // ============================================
 
     // hints not necessary since sockfd          vvvv 
-    int success = getaddrinfo(hostname, service, NULL, &result); // Success on `getaddrinfo()`. This will be used later on in conjunction with connect()
+    int getaddrinfo_status = getaddrinfo(hostname, service, NULL, &result); // Success on `getaddrinfo()`. This will be used later on in conjunction with connect()
     //above returns a list of IPs in this case to the resolved host and port that will allow us to pick one if >1 are returned.
 
-    /* currently think this code is redundant so I'm simply removing it to simplify it a bit.
-    for (result_ptr = result; result_ptr != NULL; result_ptr = result_ptr->ai_next) 
+    if(getaddrinfo_status != 0) // 0 is success. Only handling failures to print & exit as required.
     {
-        sockfd = socket(result_ptr->ai_family, result_ptr->ai_socktype, result_ptr->ai_protocol);
-        if (sockfd == -1)
-            continue;  // Socket creation failed, try next address
-    
-        if (connect(sockfd, result_ptr->ai_addr, result_ptr->ai_addrlen) != -1)
-            break;     // Success
-    
-        // Connect failed, close this socket and try next address
-        close(sockfd);
-    }
-    */
-
-    if(success != 0) // 0 is success. Only handling failures to print & exit as required.
-    {
-        std::cerr << "[ERROR] getaddrinfo(): " << gai_strerror(success) << std::endl;
-        return success; // Exits the program with the error code given by success.
+        std::cerr << "[ERROR] getaddrinfo(): " << gai_strerror(getaddrinfo_status) << std::endl;
+        return getaddrinfo_status; // Exits the program with the error code given by getaddrinfo_status.
     }
     std::cout << "[DEBUG] getaddrinfo() successful." << std::endl;
-    
-    /* 
-    Since getaddrinfo() returns a Linked List of valid addresses, we can try and
-    connect to each one by navigating the list until we connect to one.
-    */
-    
-
-    /* below stuff is wrong. not deleted for sake of just-in-case-I'm-stupid. bind() is not used by the client, but by the server.
-    bool connected = false;
-    
-    //  A pointer to `result` from `getaddrinfo()`. Used for head preservation.
-    for(addrinfo* result_ptr = result; result_ptr != null; list->next)
-    {
-        if(bind(socketfd, result_ptr->ai_addr, result_ptr->ai_addrlen) == 0)
-            break; // bind is successful since bind() returns 0 on success, so we can break from the loop now.
-    }
-    */
-    /*
-    Below copied from getaddrinfo() man page:
-
-        for (rp = result; rp != NULL; rp = rp->ai_next) {
-               sfd = socket(rp->ai_family, rp->ai_socktype,
-                       rp->ai_protocol);
-               if (sfd == -1)
-                   continue;
-
-               if (bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
-                   break; //success             
-
-                   close(sfd);
-        }
-
-    */
 
     // ============================================
     // TODO: Step 3 - Connect to the server:

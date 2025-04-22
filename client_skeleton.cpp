@@ -101,71 +101,38 @@ int main(int argc, char *argv[]) {
     }
     const char* hostname = argv[1];
     const char* service = argv[2]; //swapped this to be a char* because getaddrinfo() requires a const char*
-    //int port = std::stoi(argv[2]);
 
-    struct addrinfo hints = {};
+    struct addrinfo hints = {}; // init so there's no junk data.
 
     struct addrinfo* result;
-    struct addrinfo* rp;
+    struct addrinfo* rp; //result pointer to preserve head of linked list later on in connect().
     
     struct sockaddr_in server = {}; // Init so there's no garbage data.
 
     int sockfd, connect_success;
 
     //init hints to only allow ipv4 addr.
-
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     
 
-    // ============================================
-    // TODO: Step 1 - Create a socket:
-    // Pseudo code:
-    //   • Use socket() with:
-    //         - Domain: AF_INET (IPv4)
-    //         - Type: SOCK_STREAM (TCP)
-    //         - Protocol: 0
-    //   • Check that the socket descriptor is valid.
-    // ============================================
-    
-/*
-    
-CURRENTLY COMMENTED OUT TO SEE IF PERFORMING THE NAME RESOLUTION FIRST THEN SOCKET() FIXES THE NO ROUTE ISSUE I'M HAVING.
 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0); //  Socket file descriptor. Returns -1 on Error & used later on in `connect()` and `bind()`
-    if(sockfd == -1)
-    {
-        std::cerr << "[ERROR] socket(): " << strerror(errno) << std::endl;
-        return errno; //close program on errno
-    }
-    std::cout << "[DEBUG] socket() successful." << std::endl;
-
-*/
-    // ============================================
-    // TODO: Step 2 - Resolve the hostname:
-    // Pseudo code:
-    //   • Use a name resolution function like gethostbyname() or getaddrinfo() with the given hostname.
-    //   • Verify that the result is valid.
-    //   • If resolution fails, print an error and exit.
-    // ============================================
-
-    // hints not necessary since sockfd          vvvv <-- line is currently false as I am testing. If I forget to change, whoops.
     int getaddrinfo_status = getaddrinfo(hostname, service, &hints, &result); // Success on `getaddrinfo()`. This will be used later on in conjunction with connect()
-    //above returns a list of IPs in this case to the resolved host and port that will allow us to pick one if >1 are returned.
+    //getaddrinfo() returns a list of IPs in this case to the resolved host and port that will allow us to iterate through and pick one if >1 are returned.
 
     if(getaddrinfo_status != 0) // 0 is success. Only handling failures to print & exit as required.
     {
         std::cerr << "[ERROR] getaddrinfo(): " << gai_strerror(getaddrinfo_status) << std::endl;
         return getaddrinfo_status; // Exits the program with the error code given by getaddrinfo_status.
     }
-    std::cout << "[DEBUG] getaddrinfo() successful." << std::endl;
+//    std::cout << "[DEBUG] getaddrinfo() successful." << std::endl;
 
     //navigating linked list to attempt to find a valid connection to maybe fix my `connect() no route` or whatever bug.
-    std::cout << "[DEBUG] Iterating through Linked List..." << std::endl;
+//    std::cout << "[DEBUG] Iterating through Linked List..." << std::endl;
     int debug_counter = 1;
     for(rp = result; rp != NULL; rp = rp->ai_next)
     {   
-        std::cout << "[DEBUG] Iteration #" << debug_counter++ << ":" << std::endl;
+//        std::cout << "[DEBUG] Iteration #" << debug_counter++ << ":" << std::endl;
         sockfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
         if(sockfd == -1)
         {
@@ -173,44 +140,17 @@ CURRENTLY COMMENTED OUT TO SEE IF PERFORMING THE NAME RESOLUTION FIRST THEN SOCK
             continue; //If errors, try next in linked list.
         }
         
-        std::cout << "[DEBUG] socket() succeeded!" << std::endl;
-        /* temp(?)
-        connect_success = connect(sockfd, rp->ai_addr, rp->ai_addrlen);
-        if( connect_success != -1)
-        {
-            std::cout << "[DEBUG] connect() succeeded!" << std::endl;
-            
-            break; //If no error. will maybe want to change and print out 
-        }
-        std::cout << "[DEBUG] connect() failed. Going to next." << std::endl;
-        */
+//        std::cout << "[DEBUG] socket() succeeded!" << std::endl;
+        
         if (connect(sockfd, rp->ai_addr, rp->ai_addrlen) == 0) 
         {
-            std::cout << "[DEBUG] connect() succeeded!" << std::endl;
+//            std::cout << "[DEBUG] connect() succeeded!" << std::endl;
             break;
         }
-        std::cout << "[DEBUG] connect() failed: " << strerror(errno) << ". Trying next." << std::endl;
+//        std::cout << "[DEBUG] connect() failed: " << strerror(errno) << ". Trying next." << std::endl;
             close(sockfd); //closes sockfd if it fails to connect.
     }
 
-    // ============================================
-    // TODO: Step 3 - Connect to the server:
-    // Pseudo code:
-    //   • Fill a sockaddr_in structure with:
-    //         - Family: AF_INET
-    //         - Port: Convert port to network byte order using htons()
-    //         - IP: Copy the resolved IP address from Step 2.
-    //   • Call connect() with the server's address.
-    //   • If connect() fails, close the socket and exit.
-    // ============================================
-
-/*
-    server.sin_family = AF_INET;
-    server.sin_port = htons(atoi(service));
-
-    struct sockaddr_in* resolved = (struct sockaddr_in*)(result->ai_addr);
-    server.sin_addr = resolved->sin_addr;
-*/
     if(rp == nullptr)
     {
         std::cerr << "[ERROR] Failed to connect to " << hostname << ":" << service << "; " << strerror(errno) << " (errno " << errno << ")." << std::endl; //holy moly this is ugly af. gimme c# syntax aaa

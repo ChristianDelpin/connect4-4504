@@ -34,7 +34,7 @@
 
 const int ROWS = 6;
 const int COLS = 7;
-const int BACKLOG = 1; // Maximum pending connections
+const int BACKLOG = 1; // Maximum pending connections. Set to 1 to allow a backlog, but we don't need >1 other than to show that it works.
 
 void initBoard(char board[ROWS][COLS]) {
     for (int i = 0; i < ROWS; i++)
@@ -125,10 +125,10 @@ std::string readLine(int client) {
     // TODO: Implement using recv() in a loop.
     std::string byteString = "";
     
-    char buffer[1]; // Need to read from `recv()` one byte at a time, so no point in having a buffer > 1 byte in size.
+    char buffer[1]; // Need to read from `recv()` one byte at a time, so no point in having a buffer >1 byte in size.
     while(true)
     {
-                                             // 0 is passed as we have no use for flags.
+                                                  // 0 is passed as we have no use for flags in here.
         int n = recv(client, buffer, sizeof(buffer), 0);
         if( n <= 0 ) // if no bytes received
         {
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
         std::cerr << "[ERROR] socket(): " << strerror(errno) << std::endl;
         return errno; //close program on errno
     }
-    std::cout << "[DEBUG] socket() successful." << std::endl;
+//    std::cout << "[DEBUG] socket() successful." << std::endl;
     // ============================================
     // TODO: Step 2 - Bind the socket to the specified port:
     // Pseudo code:
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
         std::cerr << "[ERROR] bind(): " << strerror(errno) << std::endl;
         return errno;
     }
-    std::cout << "[DEBUG] bind() successful." << std::endl;
+//    std::cout << "[DEBUG] bind() successful." << std::endl;
     // ============================================
     // TODO: Step 3 - Put the socket into listening mode:
     // Pseudo code:
@@ -259,22 +259,22 @@ int main(int argc, char *argv[])
         std::cerr << "[ERROR] getsockname(): " << strerror(errno) << std::endl;
 
     const int BACKLOG = 1; 
-    std::cout << "[DEBUG] Running listen..." << std::endl;
+//    std::cout << "[DEBUG] Running listen..." << std::endl;
 
     int listen_status = listen(sockfd, BACKLOG);
 
-    std::cout << "[DEBUG] listen_status = " << listen_status << std::endl;
+//    std::cout << "[DEBUG] listen_status = " << listen_status << std::endl;
     if(listen_status != 0)
     {
         std::cerr << "[ERROR] listen(): " << strerror(errno) << std::endl;
         return errno;
     }
-    std::cout << "[DEBUG] listen() successful." << std::endl;
+//    std::cout << "[DEBUG] listen() successful." << std::endl;
     std::cout << "Listening and awaiting a connection..." << std::endl;
 
 
     while (true) {
-        std::cout << "[DEBUG] Start of loop." << std::endl;
+//        std::cout << "[DEBUG] Start of loop." << std::endl;
         // ============================================
         // TODO: Step 4 - Accept a connection:
         // Pseudo code:
@@ -286,17 +286,17 @@ int main(int argc, char *argv[])
 
         socklen_t client_length = sizeof(client_addr);
         
-        std::cout << "[DEBUG] Awaiting accept()..." << std::endl;
+//        std::cout << "[DEBUG] Awaiting accept()..." << std::endl;
         int client = accept(sockfd, (struct sockaddr*)&client_addr, &client_length);
 
-        std::cout << "[DEBUG] client = " << client << std::endl;
+//        std::cout << "[DEBUG] client = " << client << std::endl;
         //std::cout << "[DEBUG] VALUES\n----------\nsockfd = " << sockfd << "" 
         if( client == -1)
         { // Error
             std::cerr << "[ERROR] accept(): " << strerror(errno) << std::endl; // Print error.
             continue; // Continue to next iter.
         }
-        std::cout << "[DEBUG] accept() successful." << std::endl;
+//        std::cout << "[DEBUG] accept() successful." << std::endl;
 
         //If we get here, that means we accepted the connection.
         std::cout << "Connection accepted from: [" << inet_ntoa(client_addr.sin_addr) << ":"<< ntohs(client_addr.sin_port) << "]!" << std::endl;
@@ -386,8 +386,8 @@ int main(int argc, char *argv[])
         // Pseudo code:
         //   • Call close() on the socket used for the current client.
         // ============================================
-        close(client);
-        std::cout << "Game ended. Waiting for next client...\n----------------------------------------------------------------" << std::endl;
+        close(client); // Close the socket for the CLIENT, NOT the actual listening socket.
+        std::cout << "Game ended. Waiting for next client...\n----------------------------------------------------------------" << std::endl; // Added -- to make visual distinction on termination.
     } // end while true
 
     // ============================================
@@ -397,6 +397,6 @@ int main(int argc, char *argv[])
     // ============================================
 
 
-    close(sockfd); // same thing, no necessary check as if the code reaches this point, the connection should be closed.
+    close(sockfd); // Close the listening socket as the program no longer is going to run.
     return 0;
 }

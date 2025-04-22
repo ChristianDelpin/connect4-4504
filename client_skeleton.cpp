@@ -136,7 +136,7 @@ int main(int argc, char *argv[]) {
         sockfd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
         if(sockfd == -1)
         {
-            std::cout << "[DEBUG] socket() failed. Going to next." << std::endl;
+//            std::cout << "[DEBUG] socket() failed. Going to next." << std::endl;
             continue; //If errors, try next in linked list.
         }
         

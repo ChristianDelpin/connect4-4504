@@ -1,7 +1,60 @@
-this file is necessary to turn in. it will contain 
 
-"
-a summary of the commands and arguments you used for each executable, 
-any issues and difficulties, and 
-the description of your testing of your program.
-"
+---Command and Argument Summary---
+
+	
+	In order to compile the code, I used g++. Example usage:
+		g++ client_skeleton.cpp -o run_client.x
+	and 
+		g++ server_skeleton.cpp -o run_server.x
+	The -o is to change the name from the default "a.out" to my specified filename .
+	
+	To execute run_client.x, I passed in 2 arguments, the first being the address of the server I wish to connect to, 
+	followed by the port in which the server is running for me to connect to. Example usage:
+		run_client.x linprog5.cs.fsu.edu 12345
+		
+	This would then pass the address to the address lookup function and that would return a valid connectable address.
+	
+	To execute run_server.x, I passed in the port in which I want the server to listen for any inbound connections. Example usage:
+		run_server.x 12345
+	
+	
+---Any Issues and Difficulties---
+	
+	
+	I first tested everything on my machine using localhost as the address to first verify if the code is functional or not.
+	Initially, I had several mix-ups including using `sockfd` when I should be using `client` within server_skeleton.cpp. Then
+	after some more issues including some poor naming conventions which led to some confusion, along with other issues that I 
+	neither can remember, nor glean from looking at the commit message of my repo's, I ended up getting the code to function
+	locally. I then moved on to testing the code on linprog.
+	
+	
+---Descriptions of Testing My Program---
+	
+	
+	For some reason the functional code would not work on linprog. Even when passing the IP address itself from the provided
+	conversion list in the Homework listing, the client would always return errno 113 for connect() which is "No route to host."
+	
+	This is somewhat confusing because I made sure that the program would function on localhost to remove any potential 
+	networking issues.
+	
+	My assumption (which could be wrong) is there are some firewall rules that prevent this interaction from happening? I ran 
+	the server on linprog, and the client on my local machine at first, but figured that maybe I have some strong firewall
+	restrictions. Then, I transitioned to running both the client and server on linprog but still got the same error.
+	
+	I ended up giving the output of my code into some models in order to see if it can give me some ideas. I didn't pass any
+	code directly because they tend to hallucinate still quite a lot and be very confidently wrong which I feared would lead me
+	down incorrect paths. Using multiple models, they all seemed to agree that it appears to be a networking issue. However,
+	just like how they can hallucinate and be confidently wrong on code, they can do the same when it comes to error checking.
+	
+	Basically, I couldn't figure out a method to test the actual networking aspect of communicating between two different machines
+	on two different networks. Since I don't have a linux machine, and I didn't feel like adding functionality for windows specifically
+	within the code, and I couldn't figure out how to have my laptop and my desktop communicate, I haven't been able to fully confirm
+	whether or not this is indeed a networking issue within my code, or some other external issue like firewalls, or weird 
+	tunneling/piping issues between Windows and WSL. 
+
+	What I can say is that the code *does* indeed run on a localhost, indicating to my novice networking brain that there does appear
+	to be an external issue not related to my code as I am able to set up and listen to a socket on the server, and able to request
+	the program to attempt to connect to a specific socket.
+	
+	
+--End of Project Report---

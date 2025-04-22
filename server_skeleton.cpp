@@ -121,7 +121,7 @@ bool checkTie(const char board[ROWS][COLS]) {
  *       • Otherwise, append the character to your string.
  *   - Return the string.
  */
-std::string readLine(int sockfd) {
+std::string readLine(int client) { 
     // TODO: Implement using recv() in a loop.
     std::string byteString = "";
     
@@ -129,7 +129,8 @@ std::string readLine(int sockfd) {
     while(true)
     {
                                              // 0 is passed as we have no use for flags.
-        if(recv(sockfd, buffer, sizeof(buffer), 0) != 0 ) // if no bytes received
+        int n = recv(client, buffer, sizeof(buffer), 0);
+        if( n <= 0 ) // if no bytes received
         {
             std::cerr << "[ERROR] recv(): "<< errno << " - " <<  strerror(errno) << std::endl;
             break;
@@ -154,13 +155,13 @@ std::string readLine(int sockfd) {
  *   - If send() fails at any point, return false.
  *   - Return true if the complete string is sent.
  */
-bool writeLine(int sockfd, const std::string &line) {
+bool writeLine(int client, const std::string &line) {
     // TODO: Implement using send() in a loop.
     std::string newLine = line; //technically I don't need to do this since I can just do another send() after the loop with '\n', but that feels kinda dumb.
     newLine += '\n';
     for(char c : newLine)
     {
-        if(send(sockfd, &c, 1, 0) <= 0) // If some error occurs
+        if(send(client, &c, 1, 0) <= 0) // If some error occurs
         {
             std::cerr << "[ERROR] send(): "<< errno << " - " <<  strerror(errno) << std::endl;
             return false; //break not necessary since error detected.
@@ -178,9 +179,9 @@ bool writeLine(int sockfd, const std::string &line) {
  *   - A message indicating whose turn it is or the game outcome.
  * Sends this message to the client.
  */
-bool sendBoardAndTurn(int sockfd, const char board[ROWS][COLS], const std::string &turnMsg) {
+bool sendBoardAndTurn(int client, const char board[ROWS][COLS], const std::string &turnMsg) {
     std::string msg = "BOARD\n" + boardToString(board) + turnMsg;
-    return writeLine(sockfd, msg);
+    return writeLine(client, msg);
 }
 
 
@@ -286,11 +287,11 @@ int main(int argc, char *argv[])
         socklen_t client_length = sizeof(client_addr);
         
         std::cout << "[DEBUG] Awaiting accept()..." << std::endl;
-        int accept_status = accept(sockfd, (struct sockaddr*)&client_addr, &client_length);
+        int client = accept(sockfd, (struct sockaddr*)&client_addr, &client_length);
 
-        std::cout << "[DEBUG] accept_status = " << accept_status << std::endl;
+        std::cout << "[DEBUG] client = " << client << std::endl;
         //std::cout << "[DEBUG] VALUES\n----------\nsockfd = " << sockfd << "" 
-        if( accept_status == -1)
+        if( client == -1)
         { // Error
             std::cerr << "[ERROR] accept(): " << strerror(errno) << std::endl; // Print error.
             continue; // Continue to next iter.
@@ -298,7 +299,7 @@ int main(int argc, char *argv[])
         std::cout << "[DEBUG] accept() successful." << std::endl;
 
         //If we get here, that means we accepted the connection.
-        std::cout << "Connection accepted from: [" << inet_ntoa(server_addr.sin_addr) << ":"<< ntohs(server_addr.sin_port) << "]!" << std::endl;
+        std::cout << "Connection accepted from: [" << inet_ntoa(client_addr.sin_addr) << ":"<< ntohs(client_addr.sin_port) << "]!" << std::endl;
 
         // Initialize game state
         char board[ROWS][COLS];
@@ -311,12 +312,12 @@ int main(int argc, char *argv[])
         // Pseudo code:
         //   • Use sendBoardAndTurn() with the message "TURN CLIENT" to prompt the client.
         // ============================================
-
+        sendBoardAndTurn(client, board, "TURN CLIENT"); //unsure what to do with the bool value here tbh.
         // Game loop
         while (!gameOver) {
             if (clientTurn) {
                 // Wait for the client to send a move command.
-                std::string clientMsg = readLine(sockfd);
+                std::string clientMsg = readLine(client);
                 if (clientMsg.empty()) {
                     std::cerr << "Client disconnected or error occurred.\n";
                     break;
@@ -326,23 +327,23 @@ int main(int argc, char *argv[])
                 int col;
                 iss >> command >> col;
                 if (command != "MOVE" || col < 1 || col > 7) {
-                    writeLine(sockfd, "INVALID_MOVE");
-                    sendBoardAndTurn(sockfd, board, "TURN CLIENT");
+                    writeLine(client, "INVALID_MOVE");
+                    sendBoardAndTurn(client, board, "TURN CLIENT");
                     continue;
                 }
                 int dropRow = dropPiece(board, col - 1, 'C');
                 if (dropRow == -1) {
-                    writeLine(sockfd, "INVALID_MOVE");
-                    sendBoardAndTurn(sockfd, board, "TURN CLIENT");
+                    writeLine(client, "INVALID_MOVE");
+                    sendBoardAndTurn(client, board, "TURN CLIENT");
                     continue;
                 }
                 std::cout << "Client dropped a piece in column " << col << ".\n";
                 if (checkWin(board, dropRow, col - 1, 'C')) {
-                    sendBoardAndTurn(sockfd, board, "GAMEOVER CLIENT_WIN");
+                    sendBoardAndTurn(client, board, "GAMEOVER CLIENT_WIN");
                     std::cout << "Client wins!\n";
                     gameOver = true;
                 } else if (checkTie(board)) {
-                    sendBoardAndTurn(sockfd, board, "GAMEOVER TIE");
+                    sendBoardAndTurn(client, board, "GAMEOVER TIE");
                     std::cout << "Tie!\n";
                     gameOver = true;
                 } else {
@@ -366,16 +367,16 @@ int main(int argc, char *argv[])
                 }
                 std::cout << "Server dropped a piece in column " << col << ".\n";
                 if (checkWin(board, dropRow, col - 1, 'S')) {
-                    sendBoardAndTurn(sockfd, board, "GAMEOVER SERVER_WIN");
+                    sendBoardAndTurn(client, board, "GAMEOVER SERVER_WIN");
                     std::cout << "Server wins!\n";
                     gameOver = true;
                 } else if (checkTie(board)) {
-                    sendBoardAndTurn(sockfd, board, "GAMEOVER TIE");
+                    sendBoardAndTurn(client, board, "GAMEOVER TIE");
                     std::cout << "Tie!\n";
                     gameOver = true;
                 } else {
                     clientTurn = true;
-                    sendBoardAndTurn(sockfd, board, "TURN CLIENT");
+                    sendBoardAndTurn(client, board, "TURN CLIENT");
                 }
             }
         } // end game loop
@@ -385,7 +386,7 @@ int main(int argc, char *argv[])
         // Pseudo code:
         //   • Call close() on the socket used for the current client.
         // ============================================
-        close(sockfd);
+        close(client);
         std::cout << "Game ended. Waiting for next client...\n----------------------------------------------------------------" << std::endl;
     } // end while true
 
